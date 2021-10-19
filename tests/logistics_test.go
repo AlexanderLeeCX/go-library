@@ -9,8 +9,10 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"go-library/logistics"
+	"go-library/verify_code"
 	"log"
 	"testing"
 )
@@ -46,4 +48,10 @@ func TestGetExpInfo(t *testing.T) {
 		log.Fatalln(err)
 	}
 	fmt.Println(expInfo)
+}
+
+// TestGetVerifyCode 测试获取验证码
+func TestGetVerifyCode(t *testing.T) {
+	captcha := &verify_code.CaptchaStore{RedisClient: nil, Ctx: context.Background(), Prefix: ""}
+	fmt.Println(captcha)
 }

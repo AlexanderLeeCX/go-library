@@ -26,10 +26,6 @@ const (
 )
 
 const (
-	appCode = "0bba53f3bc734d3baf4a7f3260673437"
-)
-
-const (
 	SuccessCode = 0
 )
 
