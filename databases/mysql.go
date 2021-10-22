@@ -106,3 +106,8 @@ func dbExecSQLFile(db *gorm.DB, filePath string) {
 		}
 	}
 }
+
+// GetDBClient 获取gorm对象
+func (sql *Mysql) GetDBClient() *gorm.DB {
+	return sql.sqlClient
+}
