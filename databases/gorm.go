@@ -11,6 +11,7 @@ package databases
 import (
 	"fmt"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
@@ -21,7 +22,12 @@ import (
 	"time"
 )
 
-type Mysql struct {
+const (
+	SqlTypeMySql      = "mysql"
+	SqlTypePostgresql = "postgresql"
+)
+
+type GormDB struct {
 	host      string
 	port      int
 	user      string
@@ -32,18 +38,28 @@ type Mysql struct {
 	sqlClient *gorm.DB
 }
 
-func NewMysql(host string, port int, user string, password string, dbName string, maxIdle int, maxOpen int, isLogger bool) (
-	sql *Mysql, err error) {
-	sql = &Mysql{
+func NewGormDB(sqlType string, host string, port int, user string, password string, dbName string, maxIdle int, maxOpen int, isLogger bool) (
+	sql *GormDB) {
+	sql = &GormDB{
 		host: host, port: port, user: user, password: password, dbName: dbName, maxIdle: maxIdle, maxOpen: maxOpen,
 	}
-	url := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True",
-		user, password, host, port, dbName)
-	config := &gorm.Config{}
+	var (
+		err       error
+		dialector gorm.Dialector
+		config    = &gorm.Config{}
+	)
+	switch sqlType {
+	case SqlTypeMySql:
+		dialector = newMysqlDialector(host, port, user, password, dbName)
+		break
+	case SqlTypePostgresql:
+		dialector = newPostgresqlDialector(host, port, user, password, dbName)
+		break
+	}
 	if isLogger {
 		config.Logger = logger.Default.LogMode(logger.Info)
 	}
-	sql.sqlClient, err = gorm.Open(mysql.Open(url), config)
+	sql.sqlClient, err = gorm.Open(dialector, config)
 	if err != nil {
 		panic(err)
 	}
@@ -62,12 +78,24 @@ func NewMysql(host string, port int, user string, password string, dbName string
 	return
 }
 
-func (sql *Mysql) AutoMigrate(dst ...interface{}) error {
+func newPostgresqlDialector(host string, port int, user string, password string, dbName string) gorm.Dialector {
+	url := fmt.Sprintf("host=%v user=%v password=%v dbname=%v port=%v sslmode=disable TimeZone=Asia/Shanghai",
+		host, user, password, dbName, port)
+	return postgres.Open(url)
+}
+
+func newMysqlDialector(host string, port int, user string, password string, dbName string) gorm.Dialector {
+	url := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True",
+		user, password, host, port, dbName)
+	return mysql.Open(url)
+}
+
+func (sql *GormDB) AutoMigrate(dst ...interface{}) error {
 	return sql.sqlClient.AutoMigrate(dst...)
 }
 
 // InitRecord 初始化数据库数据
-func (sql *Mysql) InitRecord(record map[schema.Tabler]string) (err error) {
+func (sql *GormDB) InitRecord(record map[schema.Tabler]string) (err error) {
 	var (
 		count int64
 	)
@@ -108,6 +136,6 @@ func dbExecSQLFile(db *gorm.DB, filePath string) {
 }
 
 // GetDBClient 获取gorm对象
-func (sql *Mysql) GetDBClient() *gorm.DB {
+func (sql *GormDB) GetDBClient() *gorm.DB {
 	return sql.sqlClient
 }
